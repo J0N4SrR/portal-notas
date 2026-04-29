@@ -4,7 +4,7 @@ import os
 import re
 import unicodedata
 
-st.set_page_config(page_title="Portal Acadêmico", layout="centered", page_icon="🎓")
+st.set_page_config(page_title="Portal Acadêmico", layout="wide", page_icon="🎓")
 
 
 def normalize_column_name(name):
@@ -38,14 +38,20 @@ db = [parse_metadata(f) for f in files if parse_metadata(f)]
 if not db:
     st.warning("⚠️ Aguardando a publicação das notas pela secretaria.")
 else:
+    # 1. Filtros em colunas
+    f_col1, f_col2, f_col3 = st.columns(3)
+
     anos = sorted(list(set(d['ano'] for d in db)), reverse=True)
-    sel_ano = st.selectbox("📅 Selecione o Ano", anos)
+    with f_col1:
+        sel_ano = st.selectbox("📅 Ano", anos, index=0)
 
     semestres = sorted(list(set(d['semestre'] for d in db if d['ano'] == sel_ano)))
-    sel_sem = st.selectbox("🗓️ Selecione o Semestre", semestres)
+    with f_col2:
+        sel_sem = st.selectbox("🗓️ Semestre", semestres, index=0)
 
     bimestres = sorted(list(set(d['bimestre'] for d in db if d['ano'] == sel_ano and d['semestre'] == sel_sem)))
-    sel_bim = st.selectbox("🚩 Selecione o Bimestre", [f"{b}º Bimestre" for b in bimestres])
+    with f_col3:
+        sel_bim = st.selectbox("🎯 Bimestre", [f"{b}º Bim" for b in bimestres], index=0)
     val_bim = sel_bim[0:2]
 
     disciplinas = [d for d in db if d['ano'] == sel_ano and d['semestre'] == sel_sem and d['bimestre'] == val_bim]
@@ -57,17 +63,29 @@ else:
 
     st.divider()
 
-    with st.expander(f"ℹ️ Entenda como sua nota é calculada em {sel_disc}", expanded=False):
-        if os.path.exists(info_path):
-            with open(info_path, "r", encoding="utf-8") as f:
-                st.markdown(f.read())
-        else:
-            st.info("Consulte o informativo oficial para detalhes sobre a composição da nota.")
+    # BLOCO INFORMATIVO DE ALTA VISIBILIDADE
+    st.markdown("""
+        <div style="background-color:#fff3cd; padding:20px; border-radius:10px; border: 3px solid #ffc107; margin-bottom:25px;">
+            <h2 style="color:#856404; margin-top:0; text-align:center;">⚠️ LEIA COM ATENÇÃO: INFORMATIVO DA DISCIPLINA ⚠️</h2>
+            <hr style="border: 0.5px solid #ffeeba;">
+        </div>
+    """, unsafe_allow_html=True)
 
-    ra_input = st.text_input("🔍 Digite seu RA para consultar:", placeholder="Ex: 2026001").strip()
+    if os.path.exists(info_path):
+        with open(info_path, "r", encoding="utf-8") as f:
+            st.markdown(f.read())
+    else:
+        st.info("Consulte o plano de ensino para detalhes extras.")
+
+    st.markdown("---")
+
+    # RA em destaque centralizado (Hierarquia de Foco)
+    c_ra1, c_ra2, c_ra3 = st.columns([1, 2, 1])
+    with c_ra2:
+        ra_input = st.text_input("👤 Digite seu RA para consultar:", placeholder="Ex: 2026001", max_chars=12).strip()
 
     if ra_input:
-        with st.spinner("Buscando suas notas..."):
+        with st.spinner("Analisando dados..."):
             try:
                 df = pd.read_csv(os.path.join("data", selected_file), sep=None, engine='python', decimal=',', dtype=str)
                 df.columns = [normalize_column_name(c) for c in df.columns]
@@ -81,44 +99,56 @@ else:
 
                 if not aluno_data.empty:
                     res = aluno_data.iloc[0]
-
-                    # Aplicação do peso institucional 0.8 sobre a nota bruta final
-                    nota_bruta_final = float(res.get('nota final', 0))
-                    nota_f_moodle = nota_bruta_final * 0.8
-
+                    nota_f_moodle = float(res.get('nota final', 0)) * 0.8
                     nota_p = float(res.get('nota da prova', 0))
                     nota_e = float(res.get('nota do estudo', 0))
 
                     perc_estudo = (nota_e / 2.5) * 100
                     perc_prova = (nota_p / 7.5) * 100
 
-                    st.success("### ✅ Resultados Localizados")
+                    # Centralização e Destaque da Nota (Hierarquia Visual)
+                    c_res1, c_res2, c_res3 = st.columns([1, 4, 1])
+                    with c_res2:
+                        st.markdown(f"""
+                        <div style="background-color:#f0f2f6; padding:25px; border-radius:15px; border-left: 8px solid #2e7d32; margin-bottom:20px; text-align: center;">
+                            <h3 style="margin:0; color:#1e3d59; font-family:sans-serif;">📊 Nota Oficial Moodle (Escala 0 a 8.0)</h3>
+                            <h1 style="margin:10px 0; color:#2e7d32; font-size:64px;">{nota_f_moodle:.2f}</h1>
+                            <p style="margin:0; color:#555; font-weight: bold;">⚠️ SOMA OBRIGATÓRIA: Adicione este valor às suas notas de TA e TF.</p>
+                        </div>
+                        """, unsafe_allow_html=True)
 
-                    st.container(border=True).metric(
-                        label="SUA NOTA NO MOODLE (Peso 0.8 aplicado)",
-                        value=f"{nota_f_moodle:.2f} Pts"
-                    )
-                    st.warning(
-                        "⚠️ **SOMA OBRIGATÓRIA:** Pegue o valor acima e **some** com suas notas de **TA e TF** do Moodle para saber sua média final de 10 pontos.")
-
-                    st.write("---")
-                    st.write("#### 📊 Aproveitamento de Conhecimento (% de acertos)")
-
+                    st.write("#### 📈 Aproveitamento por Atividade")
                     col1, col2 = st.columns(2)
 
+                    # Neutralidade Absoluta (Apenas cor e porcentagem)
+                    def get_status_color(perc):
+                        if perc >= 70: return "#2e7d32"  # Verde
+                        if perc >= 50: return "#f9a825"  # Amarelo
+                        return "#c62828"  # Vermelho
+
                     with col1:
-                        st.subheader("Estudo Dirigido")
-                        st.metric("Acertos", f"{perc_estudo:.1f}%")
-                        st.progress(min(perc_estudo / 100, 1.0))
-                        st.caption(f"Valor alcançado: {nota_e:.2f} de 2.5")
+                        color_e = get_status_color(perc_estudo)
+                        st.metric("Acertos (Estudo Dirigido)", f"{perc_estudo:.1f}%")
+                        # Sinalização Visual: Semáforo (HTML/CSS colorido)
+                        st.markdown(f"""
+                            <div style="background-color: #e0e0e0; border-radius: 10px; height: 20px; width: 100%;">
+                                <div style="background-color: {color_e}; height: 20px; width: {min(perc_estudo, 100)}%; border-radius: 10px;"></div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        st.caption(f"Valor: {nota_e:.2f} de 2.5")
 
                     with col2:
-                        st.subheader("Prova Presencial")
-                        st.metric("Acertos", f"{perc_prova:.1f}%")
-                        st.progress(min(perc_prova / 100, 1.0))
-                        st.caption(f"Valor alcançado: {nota_p:.2f} de 7.5")
+                        color_p = get_status_color(perc_prova)
+                        st.metric("Acertos (Prova Presencial)", f"{perc_prova:.1f}%")
+                        # Sinalização Visual: Semáforo (HTML/CSS colorido)
+                        st.markdown(f"""
+                            <div style="background-color: #e0e0e0; border-radius: 10px; height: 20px; width: 100%;">
+                                <div style="background-color: {color_p}; height: 20px; width: {min(perc_prova, 100)}%; border-radius: 10px;"></div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        st.caption(f"Valor: {nota_p:.2f} de 7.5")
 
                 else:
-                    st.error("❌ RA não localizado. Verifique se selecionou o Bimestre e Disciplina corretos.")
+                    st.error("⚠️ **RA não localizado.**\n\nVerifique se o número está correto ou se a **Disciplina/Bimestre** selecionada acima é a correta para este aluno.")
             except Exception as e:
-                st.error(f"Erro ao processar cálculos: {e}")
+                st.error(f"Erro ao processar dados: {e}")
