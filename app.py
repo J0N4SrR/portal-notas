@@ -99,12 +99,15 @@ else:
 
                 if not aluno_data.empty:
                     res = aluno_data.iloc[0]
-                    nota_f_moodle = float(res.get('nota final', 0)) * 0.8
-                    nota_p = float(res.get('nota da prova', 0))
-                    nota_e = float(res.get('nota do estudo', 0))
 
-                    perc_estudo = (nota_e / 2.5) * 100
-                    perc_prova = (nota_p / 7.5) * 100
+                    # Cálculo de pesos institucionais (Escala 0.8)
+                    nota_f_moodle = float(res.get('nota final', 0)) * 0.8
+                    nota_p_weighted = float(res.get('nota da prova', 0)) * 0.8
+                    nota_e_weighted = float(res.get('nota do estudo', 0)) * 0.8
+
+                    # Porcentagens baseadas na escala original do professor (2.5 e 7.5)
+                    perc_estudo = (float(res.get('nota do estudo', 0)) / 2.5) * 100
+                    perc_prova = (float(res.get('nota da prova', 0)) / 7.5) * 100
 
                     # Centralização e Destaque da Nota (Hierarquia Visual)
                     c_res1, c_res2, c_res3 = st.columns([1, 4, 1])
@@ -120,11 +123,13 @@ else:
                     st.write("#### 📈 PORCENTAGEM DE ACERTO")
                     col1, col2 = st.columns(2)
 
+
                     # Neutralidade Absoluta (Apenas cor e porcentagem)
                     def get_status_color(perc):
                         if perc >= 70: return "#2e7d32"  # Verde
                         if perc >= 50: return "#f9a825"  # Amarelo
                         return "#c62828"  # Vermelho
+
 
                     with col1:
                         color_e = get_status_color(perc_estudo)
@@ -135,7 +140,7 @@ else:
                                 <div style="background-color: {color_e}; height: 20px; width: {min(perc_estudo, 100)}%; border-radius: 10px;"></div>
                             </div>
                         """, unsafe_allow_html=True)
-                        st.caption(f"Valor: {nota_e:.2f} de 2.5")
+                        st.caption(f"Valor: {nota_e_weighted:.2f} de 2.0")
 
                     with col2:
                         color_p = get_status_color(perc_prova)
@@ -146,9 +151,10 @@ else:
                                 <div style="background-color: {color_p}; height: 20px; width: {min(perc_prova, 100)}%; border-radius: 10px;"></div>
                             </div>
                         """, unsafe_allow_html=True)
-                        st.caption(f"Valor: {nota_p:.2f} de 7.5")
+                        st.caption(f"Valor: {nota_p_weighted:.2f} de 6.0")
 
                 else:
-                    st.error("⚠️ **RA não localizado.**\n\nVerifique se o número está correto ou se a **Disciplina/Bimestre** selecionada acima é a correta para este aluno.")
+                    st.error(
+                        "⚠️ **RA não localizado.**\n\nVerifique se o número está correto ou se a **Disciplina/Bimestre** selecionada acima é a correta para este aluno.")
             except Exception as e:
                 st.error(f"Erro ao processar dados: {e}")
