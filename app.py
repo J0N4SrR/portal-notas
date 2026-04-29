@@ -59,20 +59,18 @@ else:
         st.markdown(f"""
         Esta nota compõe **8,0 pontos** da sua média final no Moodle. 
         O cálculo utiliza peso **0,8** sobre a nota do professor (0-10).
-
-        | Atividade | Avaliação (0 a 10) | Pontos Reais (0 a 8) |
-        | :--- | :---: | :---: |
-        | **Estudo Dirigido** | 2,5 | **2,0** |
-        | **Prova** | 7,5 | **6,0** |
         """)
 
     ra_input = st.text_input("🔍 Digite seu RA:", placeholder="Ex: 2026001").strip()
 
     if ra_input:
-        with st.spinner("Buscando informações..."):
+        with st.spinner("Analisando desempenho..."):
             try:
                 df = pd.read_csv(f"data/{selected_file}", sep=None, engine='python', decimal=',')
                 df.columns = [normalize_column_name(c) for c in df.columns]
+
+                media_sala_ed = df['nota do estudo'].mean()
+                media_sala_prova = df['nota da prova'].mean()
 
                 aluno_data = df[df['ra'] == ra_input]
 
@@ -83,28 +81,28 @@ else:
                     nota_prova = float(res.get('nota da prova', 0))
                     nota_estudo = float(res.get('nota do estudo', 0))
 
-                    media_sala_ed = df['nota do estudo'].mean()
-                    media_sala_prova = df['nota da prova'].mean()
+                    percentual_aproveitamento = (nota_final / 8.0) * 100
+
+                    delta_ed = nota_estudo - media_sala_ed
+                    delta_prova = nota_prova - media_sala_prova
 
                     st.success(f"### Olá!")
 
                     c1, c2 = st.columns(2)
                     c1.metric("Sua Nota Final (Peso 0.8)", f"{nota_final:.2f}")
-                    c2.metric("Aproveitamento Total", f"{(nota_final / 8.0) * 100:.1f}%")
+                    c2.metric("Aproveitamento Total", f"{percentual_aproveitamento:.1f}%")
 
                     st.write("#### Comparativo com a Turma")
                     col_ed, col_prova = st.columns(2)
 
                     with col_ed:
-                        delta_ed = nota_estudo - media_sala_ed
-                        st.metric("Seu Estudo Dirigido", f"{nota_estudo:.2f}", delta=f"{delta_ed:.2f}")
+                        st.metric("Seu Estudo Dirigido", f"{nota_estudo:.2f}", delta=f"{delta_ed:.2f} vs Sala")
                         st.progress(min(nota_estudo / 2.5, 1.0))
 
                     with col_prova:
-                        delta_p = nota_prova - media_sala_prova
-                        st.metric("Sua Prova", f"{nota_prova:.2f}", delta=f"{delta_p:.2f}")
+                        st.metric("Sua Prova", f"{nota_prova:.2f}", delta=f"{delta_prova:.2f} vs Sala")
                         st.progress(min(nota_prova / 7.5, 1.0))
                 else:
                     st.error("❌ RA não localizado nesta lista.")
             except Exception as e:
-                st.error(f"Erro ao processar dados: {e}")
+                st.error(f"Erro ao processar analytics: {e}")
