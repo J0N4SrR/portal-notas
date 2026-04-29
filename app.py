@@ -4,7 +4,7 @@ import os
 import re
 import unicodedata
 
-st.set_page_config(page_title="Portal Acadêmico", layout="wide", page_icon="🎓")
+st.set_page_config(page_title="Devolutiva do Docente Me. Jonas R", layout="wide", page_icon="🎓")
 
 
 def normalize_column_name(name):
@@ -30,7 +30,7 @@ def parse_metadata(filename):
 if not os.path.exists("data"):
     os.makedirs("data", exist_ok=True)
 
-st.title("🎓 Portal de Resultados")
+st.title("🎓 Portal Devolutiva do Docente Me. Jonas R.")
 
 files = [f for f in os.listdir("data") if f.endswith(".csv")]
 db = [parse_metadata(f) for f in files if parse_metadata(f)]
