@@ -4,7 +4,7 @@ import os
 import re
 import unicodedata
 
-st.set_page_config(page_title="Portal Acadêmico", layout="centered", page_icon="📊")
+st.set_page_config(page_title="Portal Acadêmico", layout="centered", page_icon="🎓")
 
 
 def normalize_column_name(name):
@@ -53,74 +53,72 @@ else:
 
     selected_data = next(d for d in disciplinas if d['disciplina'] == sel_disc)
     selected_file = selected_data['file']
+    info_path = os.path.join("data", selected_file.replace(".csv", ".md"))
 
     st.divider()
-    with st.expander(f"ℹ️ Informativo de Avaliação: {sel_disc}", expanded=True):
-        st.markdown(f"""
-        ### Como sua nota é composta:
-        Sua dedicação em sala e nos estudos é valorizada em duas etapas que somam **8,0 pontos**:
 
-        *   **🛡️ Estudo Dirigido (2,5 pts):** Seu esforço semanal e base de conhecimento.
-        *   **🚀 Prova (7,5 pts):** Sua conquista final e consolidação do aprendizado.
+    with st.expander(f"ℹ️ Entenda como sua nota é calculada em {sel_disc}", expanded=False):
+        if os.path.exists(info_path):
+            with open(info_path, "r", encoding="utf-8") as f:
+                st.markdown(f.read())
+        else:
+            st.info("Consulte o informativo oficial para detalhes sobre a composição da nota.")
 
-        *O sistema ajusta automaticamente o total para a média institucional (Peso 0.8).*
-        """)
-
-    ra_input = st.text_input("🔍 Digite seu RA para ver sua caminhada:", placeholder="Ex: 2026001").strip()
+    ra_input = st.text_input("🔍 Digite seu RA para consultar:", placeholder="Ex: 2026001").strip()
 
     if ra_input:
-        with st.spinner("Preparando seu dashboard..."):
+        with st.spinner("Buscando suas notas..."):
             try:
-                df = pd.read_csv(f"data/{selected_file}", sep=None, engine='python', decimal=',')
+                df = pd.read_csv(os.path.join("data", selected_file), sep=None, engine='python', decimal=',', dtype=str)
                 df.columns = [normalize_column_name(c) for c in df.columns]
+                df['ra'] = df['ra'].str.strip()
 
-                media_sala_ed = df['nota do estudo'].mean()
-                media_sala_prova = df['nota da prova'].mean()
+                for col in ['nota do estudo', 'nota da prova', 'nota final']:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col].str.replace(',', '.'), errors='coerce').fillna(0)
 
                 aluno_data = df[df['ra'] == ra_input]
 
                 if not aluno_data.empty:
                     res = aluno_data.iloc[0]
 
-                    nota_final = float(res.get('nota final', 0))
-                    nota_prova = float(res.get('nota da prova', 0))
-                    nota_estudo = float(res.get('nota do estudo', 0))
+                    # Aplicação do peso institucional 0.8 sobre a nota bruta final
+                    nota_bruta_final = float(res.get('nota final', 0))
+                    nota_f_moodle = nota_bruta_final * 0.8
 
-                    percentual_aproveitamento = (nota_final / 8.0) * 100
-                    delta_ed = nota_estudo - media_sala_ed
-                    delta_prova = nota_prova - media_sala_prova
+                    nota_p = float(res.get('nota da prova', 0))
+                    nota_e = float(res.get('nota do estudo', 0))
 
-                    st.markdown(f"### Olá! Veja seu progresso:")
+                    perc_estudo = (nota_e / 2.5) * 100
+                    perc_prova = (nota_p / 7.5) * 100
 
-                    col_main1, col_main2 = st.columns(2)
-                    col_main1.metric("Resultado Geral (0-8.0)", f"{nota_final:.2f}")
-                    col_main2.metric("Aproveitamento da Jornada", f"{percentual_aproveitamento:.1f}%")
-                    st.progress(min(nota_final / 8.0, 1.0))
+                    st.success("### ✅ Resultados Localizados")
 
-                    st.write("#### Detalhamento das Etapas")
-                    col_ed, col_prova = st.columns(2)
+                    st.container(border=True).metric(
+                        label="SUA NOTA NO MOODLE (Peso 0.8 aplicado)",
+                        value=f"{nota_f_moodle:.2f} Pts"
+                    )
+                    st.warning(
+                        "⚠️ **SOMA OBRIGATÓRIA:** Pegue o valor acima e **some** com suas notas de **TA e TF** do Moodle para saber sua média final de 10 pontos.")
 
-                    with col_ed:
-                        st.write(f"**Estudo Dirigido** ({nota_estudo:.2f} de 2.5)")
-                        st.progress(min(nota_estudo / 2.5, 1.0))
-                        st.metric("Diferença vs Sala", f"{delta_ed:+.2f}", delta_color="normal")
+                    st.write("---")
+                    st.write("#### 📊 Aproveitamento de Conhecimento (% de acertos)")
 
-                    with col_prova:
-                        st.write(f"**Prova Presencial** ({nota_prova:.2f} de 7.5)")
-                        st.progress(min(nota_prova / 7.5, 1.0))
-                        st.metric("Diferença vs Sala", f"{delta_prova:+.2f}", delta_color="normal")
+                    col1, col2 = st.columns(2)
 
-                    st.divider()
-                    if nota_final >= 7.0:
-                        st.success(
-                            "🌟 **Excelente!** Você demonstrou um domínio admirável do conteúdo. Continue com essa dedicação!")
-                    elif nota_final >= 5.0:
-                        st.info(
-                            "✨ **Bom caminho!** Você conquistou uma base sólida. Que tal focar nos pontos da prova para brilhar ainda mais?")
-                    else:
-                        st.warning(
-                            "⚠️ **Atenção:** Esta etapa serve como um mapa para onde precisamos focar mais. Vamos reforçar os estudos dirigidos juntos?")
+                    with col1:
+                        st.subheader("Estudo Dirigido")
+                        st.metric("Acertos", f"{perc_estudo:.1f}%")
+                        st.progress(min(perc_estudo / 100, 1.0))
+                        st.caption(f"Valor alcançado: {nota_e:.2f} de 2.5")
+
+                    with col2:
+                        st.subheader("Prova Presencial")
+                        st.metric("Acertos", f"{perc_prova:.1f}%")
+                        st.progress(min(perc_prova / 100, 1.0))
+                        st.caption(f"Valor alcançado: {nota_p:.2f} de 7.5")
+
                 else:
-                    st.error("❌ RA não localizado. Verifique se o número está correto.")
+                    st.error("❌ RA não localizado. Verifique se selecionou o Bimestre e Disciplina corretos.")
             except Exception as e:
-                st.error(f"Erro ao carregar dashboard: {e}")
+                st.error(f"Erro ao processar cálculos: {e}")
