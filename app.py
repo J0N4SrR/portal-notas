@@ -111,13 +111,13 @@ else:
                     with c_res2:
                         st.markdown(f"""
                         <div style="background-color:#f0f2f6; padding:25px; border-radius:15px; border-left: 8px solid #2e7d32; margin-bottom:20px; text-align: center;">
-                            <h3 style="margin:0; color:#1e3d59; font-family:sans-serif;">📊 Nota Oficial Moodle (Escala 0 a 8.0)</h3>
+                            <h3 style="margin:0; color:#1e3d59; font-family:sans-serif;">📊 Nota Final (Máx. 8.0 pts)</h3>
                             <h1 style="margin:10px 0; color:#2e7d32; font-size:64px;">{nota_f_moodle:.2f}</h1>
                             <p style="margin:0; color:#555; font-weight: bold;">⚠️ SOMA OBRIGATÓRIA: Adicione este valor às suas notas de TA e TF.</p>
                         </div>
                         """, unsafe_allow_html=True)
 
-                    st.write("#### 📈 Aproveitamento por Atividade")
+                    st.write("#### 📈 PORCENTAGEM DE ACERTO")
                     col1, col2 = st.columns(2)
 
                     # Neutralidade Absoluta (Apenas cor e porcentagem)
